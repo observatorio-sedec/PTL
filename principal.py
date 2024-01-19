@@ -7,6 +7,8 @@ import ssl
 # from Google import Create_Service
 # from googleapiclient.http import MediaFileUpload
 import openpyxl
+from openpyxl.styles import Border, Side, Font
+from openpyxl.utils import get_column_letter
 
 tabela1086 = 1086
 tabela6830 = 6830
@@ -82,9 +84,72 @@ def tratando_dados1086(dados_brutos_282, dados_brutos_283):
         for ii in dados:
             dados_produto = ii['classificacoes']
             dados_producao = ii['series']
+
+            referencia_tempo = []
+            tipo_inspecao = []
+
+            for iii in dados_produto:
+                dados_id_produto = iii['categoria']
+
+                for id_produto, nome_produto in dados_id_produto.items():
+            
+                    if nome_produto in ['Federal', 'Estadual', 'Municipal']:
+                        tipo_inspecao.append(nome_produto)
+
+                chave_referencia_tempo = next(iter(dados_id_produto.values()))
+
+                if chave_referencia_tempo == 'Total do trimestre' and chave_referencia_tempo not in referencia_tempo:
+                    referencia_tempo.append(chave_referencia_tempo)
+
+            for iv in dados_producao:
+                id = iv['localidade']['id']
+                nome = iv['localidade']['nome'].replace(' (MT)', '')
+                dados_ano_producao = iv['serie']
+
+                for ano, producao in dados_ano_producao.items():
+                    partes = ano.split("/")
+                    ano_sem_trimestre = int(partes[0][:4])
+                    trimestre = int(partes[0][4:6])
+                    producao = producao.replace('-', '0').replace('...', '0').replace('X', '0')
+
+                    referencia_tempo_str = ', '.join(referencia_tempo)
+                    tipo_inspecao_str = ', '.join(tipo_inspecao)
+
+                    dict = {
+                        'id': id,
+                        'nome': nome,
+                        'id_produto': id_produto,
+                        'Referencia_Tempo': referencia_tempo_str,
+                        'Tipo_Inspecao': tipo_inspecao_str,
+                        variavel: producao,
+                        'ano': f'01/01/{ano_sem_trimestre}',
+                        'Trimestre': trimestre
+                    }
+
+                    if id_tabela == '282':
+                        dados_limpos_282.append(dict)
+                    elif id_tabela == '283':
+                        dados_limpos_283.append(dict)
+
+    return dados_limpos_282, dados_limpos_283
+
+def tratando_dados6830(dados_brutos_282, dados_brutos_283):
+    dados_limpos_282 = []
+    dados_limpos_283 = []
+    
+    variaveis = [dados_brutos_282, dados_brutos_283]
+
+    for i in variaveis:
+        id_tabela = i['id']
+        variavel = i['variavel']
+        unidade = i['unidade']
+        dados = i['resultados']
+
+        for ii in dados:
+            dados_produto = ii['classificacoes']
+            dados_producao = ii['series']
             
             referencia_tempo = set()
-            tipo_inspecao = set()
 
             for iii in dados_produto:
                 dados_id_produto = iii['categoria']
@@ -110,18 +175,12 @@ def tratando_dados1086(dados_brutos_282, dados_brutos_283):
                             
                             referencia_tempo_str = ', '.join(referencia_tempo)
 
-                            if nome_produto in ['Federal', 'Estadual', 'Municipal']:
-                                tipo_inspecao.add(nome_produto)
-
-                            tipo_inspecao_str = ', '.join(tipo_inspecao)
-
                             
                             dict = {
                                 'id': id,
                                 'nome': nome,
                                 'id_produto': id_produto,
                                 'Referencia_Tempo': referencia_tempo_str,
-                                'Tipo_Inspecao': tipo_inspecao_str,
                                 variavel: producao,
                                 'ano': f'01/01/{ano_sem_trimestre}',
                                 'Trimestre': trimestre
@@ -134,37 +193,117 @@ def tratando_dados1086(dados_brutos_282, dados_brutos_283):
 
     return dados_limpos_282, dados_limpos_283
 
-
-def tratando_dados6830(dados_brutos_282, dados_brutos_283):
-    dados_limpos_282 = []
-    dados_limpos_283 = []
-
 def executando_funcoes():
     variavel282nacional, variavel283nacional = extrair_dados(url1086_nacional, tabela1086)
     variavel282estadual, variavel283estadual = extrair_dados(url1086_estadual, tabela1086)
+    
+    variavel6830nacional, variavel6831nacional = extrair_dados(url6830_nacional, tabela6830)
+    
+    dados_limpos_6830_nacional, dados_limpos_6831_nacional = tratando_dados6830(variavel6830nacional, variavel6831nacional)
 
     dados_limpos_282_nacional, dados_limpos_283_nacional = tratando_dados1086(variavel282nacional, variavel283nacional)
     dados_limpos_282_estadual, dados_limpos_283_estadual = tratando_dados1086(variavel282estadual, variavel283estadual)
     
-    return dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual
+    return dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual, dados_limpos_6830_nacional, dados_limpos_6831_nacional
 
-def gerando_dataframe(dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual):
+def gerando_dataframe1086(dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual):
     df282_nacional = pd.DataFrame(dados_limpos_282_nacional)
     df283_nacional = pd.DataFrame(dados_limpos_283_nacional)
     df1086_nacional = pd.merge(df282_nacional, df283_nacional, on=['id', 'nome', 'id_produto','Referencia_Tempo','Tipo_Inspecao', 'ano', 'Trimestre'], how='inner')
     
     df282_estadual = pd.DataFrame(dados_limpos_282_estadual)
-    print(df282_estadual)
+    # print(df282_estadual)
     df283_estadual = pd.DataFrame(dados_limpos_283_estadual)
-    print(df283_estadual)
+    # print(df283_estadual)
     df1086_estadual= pd.merge(df282_estadual, df283_estadual, on=['id', 'nome', 'id_produto','Referencia_Tempo','Tipo_Inspecao', 'ano', 'Trimestre'], how='inner')
     
     return df1086_nacional, df1086_estadual
 
-pp = pprint.PrettyPrinter(indent=4)
-dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual = executando_funcoes()
-df1086_nacional, df1086_estadual = gerando_dataframe(dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual)
-df1086_nacional.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT NACIONAL.xlsx", index=False)
-df1086_estadual.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT ESTADUAL.xlsx", index=False)
-# print(df1086_nacional)
-# print(df1086_estadual)
+def gerando_dataframe6830(dados_limpos_6830_nacional, dados_limpos_6831_nacional):
+    df6832_nacional = pd.DataFrame(dados_limpos_6830_nacional)
+    df6831_nacional = pd.DataFrame(dados_limpos_6831_nacional)
+    df6830 = pd.merge(df6832_nacional, df6831_nacional, on=['id', 'nome', 'id_produto','Referencia_Tempo', 'ano', 'Trimestre'], how='inner')
+    
+    return df6830
+
+def ajustar_colunas(aba):
+    for coluna in aba.columns:
+        max_length = 0
+        coluna = [cell for cell in coluna]
+        for cell in coluna:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        aba.column_dimensions[get_column_letter(coluna[0].column)].width = adjusted_width
+
+def ajustar_bordas(planilha):
+
+    for sheet_name in planilha.sheetnames:
+        worksheet = planilha[sheet_name]
+        
+        for col_num in range(1, worksheet.max_column + 1):
+            cell = worksheet.cell(row=1, column=col_num)
+            cell.font = Font(bold=True)
+            cell.border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+            
+# pp = pprint.PrettyPrinter(indent=4)
+dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual, dados_limpos_6830_nacional, dados_limpos_6831_nacional = executando_funcoes()
+
+df1086_nacional, df1086_estadual = gerando_dataframe1086(dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual)
+df1086_nacional['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_nacional['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
+df1086_nacional['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_nacional['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
+
+df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
+df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
+
+df1086_nacional.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 1086 NACIONAL.xlsx", index=False)
+df1086_estadual.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 1086 ESTADUAL.xlsx", index=False)
+print(df1086_nacional)
+print(df1086_estadual)
+
+
+df6930 = gerando_dataframe6830(dados_limpos_6830_nacional, dados_limpos_6831_nacional)
+df6930['Quantidade de leite cru, resfriado ou não, adquirido'] = df6930['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
+df6930['Quantidade de leite cru, resfriado ou não, industrializado'] = df6930['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
+df6930.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 6830 NACIONAL.xlsx", index=False)
+print(df6930)
+
+wb_6930nacional = openpyxl.load_workbook("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 6830 NACIONAL.xlsx")
+ws6930_nacional = wb_6930nacional.active
+
+ajustar_colunas(ws6930_nacional)
+ajustar_bordas(wb_6930nacional)
+wb_6930nacional.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 6830 NACIONAL.xlsx")
+##############################
+planilha_principal = openpyxl.Workbook()
+
+wb_1086nacional = openpyxl.load_workbook("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 1086 NACIONAL.xlsx")
+wb_1086estadual = openpyxl.load_workbook("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 1086 ESTADUAL.xlsx")
+
+aba1086_nacional = planilha_principal.create_sheet('NACIONAL 1086')
+aba1086_estadual = planilha_principal.create_sheet('ESTADUAL 1086')
+
+
+for linha in wb_1086nacional.active.iter_rows(values_only=True):
+    aba1086_nacional.append(linha)
+
+for linha in wb_1086estadual.active.iter_rows(values_only=True):
+    aba1086_estadual.append(linha)
+    
+for aba in planilha_principal.sheetnames:
+    if aba not in ["NACIONAL 1086", "ESTADUAL 1086"]:
+        del planilha_principal[aba]
+
+lista_abas = [aba1086_nacional, aba1086_estadual]
+for abas in lista_abas:
+    ajustar_colunas(abas)
+    
+planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PTL 1086.xlsx")    
+############################    
+worksheet = planilha_principal.active
+df = pd.read_excel('C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PTL 1086.xlsx')
+ajustar_bordas(planilha_principal)        
+planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PTL 1086.xlsx")
