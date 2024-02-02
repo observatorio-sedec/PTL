@@ -7,8 +7,7 @@ import ssl
 # from Google import Create_Service
 # from googleapiclient.http import MediaFileUpload
 import openpyxl
-from openpyxl.styles import Border, Side, Font
-from openpyxl.utils import get_column_letter
+from ajustar_planilha import ajustar_colunas, ajustar_bordas
 
 tabela1086 = 1086
 tabela6830 = 6830
@@ -226,29 +225,6 @@ def gerando_dataframe6830(dados_limpos_6830_nacional, dados_limpos_6831_nacional
     
     return df6830
 
-def ajustar_colunas(aba):
-    for coluna in aba.columns:
-        max_length = 0
-        coluna = [cell for cell in coluna]
-        for cell in coluna:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(cell.value)
-            except:
-                pass
-        adjusted_width = (max_length + 2)
-        aba.column_dimensions[get_column_letter(coluna[0].column)].width = adjusted_width
-
-def ajustar_bordas(planilha):
-
-    for sheet_name in planilha.sheetnames:
-        worksheet = planilha[sheet_name]
-        
-        for col_num in range(1, worksheet.max_column + 1):
-            cell = worksheet.cell(row=1, column=col_num)
-            cell.font = Font(bold=True)
-            cell.border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
-            
 # pp = pprint.PrettyPrinter(indent=4)
 dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual, dados_limpos_6830_nacional, dados_limpos_6831_nacional = executando_funcoes()
 
@@ -261,15 +237,18 @@ df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] =
 
 df1086_nacional.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 1086 NACIONAL.xlsx", index=False)
 df1086_estadual.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 1086 ESTADUAL.xlsx", index=False)
-print(df1086_nacional)
-print(df1086_estadual)
 
+df1086_nacional.to_html('C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\CHATBOT\\Banco de dados Bot\\PLT 1086 NACIONAL.html', index=False)
+df1086_estadual.to_html('C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\CHATBOT\\Banco de dados Bot\\PLT 1086 ESTADUAL.html', index=False)
+# print(df1086_nacional)
+# print(df1086_estadual)
 
 df6930 = gerando_dataframe6830(dados_limpos_6830_nacional, dados_limpos_6831_nacional)
 df6930['Quantidade de leite cru, resfriado ou não, adquirido'] = df6930['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
 df6930['Quantidade de leite cru, resfriado ou não, industrializado'] = df6930['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
 df6930.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 6830 NACIONAL.xlsx", index=False)
-print(df6930)
+df6930.to_html('C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\CHATBOT\\Banco de dados Bot\\PLT 6830 NACIONAL.html', index=False)
+# print(df6930)
 
 wb_6930nacional = openpyxl.load_workbook("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 6830 NACIONAL.xlsx")
 ws6930_nacional = wb_6930nacional.active
@@ -285,7 +264,6 @@ wb_1086estadual = openpyxl.load_workbook("C:\\Users\\LucasFreitas\\Documents\\Lu
 
 aba1086_nacional = planilha_principal.create_sheet('NACIONAL 1086')
 aba1086_estadual = planilha_principal.create_sheet('ESTADUAL 1086')
-
 
 for linha in wb_1086nacional.active.iter_rows(values_only=True):
     aba1086_nacional.append(linha)
@@ -304,6 +282,5 @@ for abas in lista_abas:
 planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PTL 1086.xlsx")    
 ############################    
 worksheet = planilha_principal.active
-df = pd.read_excel('C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PTL 1086.xlsx')
 ajustar_bordas(planilha_principal)        
 planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PTL 1086.xlsx")
