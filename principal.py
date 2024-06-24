@@ -143,7 +143,7 @@ def tratando_dados6830(dados_brutos_282, dados_brutos_283):
         variavel = i['variavel']
         unidade = i['unidade']
         dados = i['resultados']
-
+        
         for ii in dados:
             dados_produto = ii['classificacoes']
             dados_producao = ii['series']
@@ -211,10 +211,13 @@ def gerando_dataframe1086(dados_limpos_282_nacional, dados_limpos_283_nacional, 
     df1086_nacional = pd.merge(df282_nacional, df283_nacional, on=['id', 'nome', 'id_produto','Referencia_Tempo','Tipo_Inspecao', 'ano', 'Trimestre'], how='inner')
     
     df282_estadual = pd.DataFrame(dados_limpos_282_estadual)
-    # print(df282_estadual)
     df283_estadual = pd.DataFrame(dados_limpos_283_estadual)
-    # print(df283_estadual)
     df1086_estadual= pd.merge(df282_estadual, df283_estadual, on=['id', 'nome', 'id_produto','Referencia_Tempo','Tipo_Inspecao', 'ano', 'Trimestre'], how='inner')
+    
+    df1086_nacional['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_nacional['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
+    df1086_nacional['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_nacional['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
+    df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
+    df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
     
     return df1086_nacional, df1086_estadual
 
@@ -222,33 +225,20 @@ def gerando_dataframe6830(dados_limpos_6830_nacional, dados_limpos_6831_nacional
     df6832_nacional = pd.DataFrame(dados_limpos_6830_nacional)
     df6831_nacional = pd.DataFrame(dados_limpos_6831_nacional)
     df6830 = pd.merge(df6832_nacional, df6831_nacional, on=['id', 'nome', 'id_produto','Referencia_Tempo', 'ano', 'Trimestre'], how='inner')
-    
+    df6830['Quantidade de leite cru, resfriado ou não, adquirido'] = df6830['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
+    df6830['Quantidade de leite cru, resfriado ou não, industrializado'] = df6830['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
     return df6830
 
 # pp = pprint.PrettyPrinter(indent=4)
 dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual, dados_limpos_6830_nacional, dados_limpos_6831_nacional = executando_funcoes()
-
 df1086_nacional, df1086_estadual = gerando_dataframe1086(dados_limpos_282_nacional, dados_limpos_283_nacional, dados_limpos_282_estadual, dados_limpos_283_estadual)
-df1086_nacional['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_nacional['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
-df1086_nacional['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_nacional['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
 
-df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
-df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
 
 df1086_nacional.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 1086 NACIONAL.xlsx", index=False)
 df1086_estadual.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 1086 ESTADUAL.xlsx", index=False)
 
-df1086_nacional.to_html('C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\CHATBOT\\Banco de dados Bot\\PLT 1086 NACIONAL.html', index=False)
-df1086_estadual.to_html('C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\CHATBOT\\Banco de dados Bot\\PLT 1086 ESTADUAL.html', index=False)
-# print(df1086_nacional)
-# print(df1086_estadual)
-
-df6930 = gerando_dataframe6830(dados_limpos_6830_nacional, dados_limpos_6831_nacional)
-df6930['Quantidade de leite cru, resfriado ou não, adquirido'] = df6930['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)
-df6930['Quantidade de leite cru, resfriado ou não, industrializado'] = df6930['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
-df6930.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 6830 NACIONAL.xlsx", index=False)
-df6930.to_html('C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\CHATBOT\\Banco de dados Bot\\PLT 6830 NACIONAL.html', index=False)
-# print(df6930)
+df6830 = gerando_dataframe6830(dados_limpos_6830_nacional, dados_limpos_6831_nacional)
+df6830.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 6830 NACIONAL.xlsx", index=False)
 
 wb_6930nacional = openpyxl.load_workbook("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PLT 6830 NACIONAL.xlsx")
 ws6930_nacional = wb_6930nacional.active
@@ -284,3 +274,7 @@ planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arqui
 worksheet = planilha_principal.active
 ajustar_bordas(planilha_principal)        
 planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\PTL 1086.xlsx")
+
+if __name__ == '__main__':
+    from sql import executar_sql 
+    executar_sql()
