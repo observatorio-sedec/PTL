@@ -125,10 +125,9 @@ def tratando_dados1086(dados_brutos_282, dados_brutos_283, dados_brutos_171, dad
                         'Referencia_Tempo': referencia_tempo_str,
                         'Tipo_Inspecao': tipo_inspecao_str,
                         variavel: producao,
-                        'ano': f'01/{int(trimestre) * 3}/{ano_sem_trimestre}',
+                        'ano': f'01/{int(trimestre) * 3:02d}/{ano_sem_trimestre}',
                         'Trimestre': trimestre
                     }
-
                     if id_tabela == '282':
                         dados_limpos_282.append(dict)
                     elif id_tabela == '283':
@@ -177,6 +176,8 @@ def gerando_dataframe1086(dados_limpos_282_estadual, dados_limpos_283_estadual, 
     df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'] * 1000
     df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
     df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] * 1000
+    df1086_estadual['ano'] = pd.to_datetime(df1086_estadual['ano'], format='%d/%m/%Y', errors='coerce')
+
     
     return df1086_estadual
 
