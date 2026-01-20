@@ -1,6 +1,6 @@
 import psycopg2
 from principal import df1086_estadual
-from conexão import conexao
+from conexao import conexao
 
 def executar_sql():
     cur = conexao.cursor()

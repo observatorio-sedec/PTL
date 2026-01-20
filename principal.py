@@ -145,7 +145,7 @@ def executando_funcoes():
     lista_dados_282 = []
     lista_dados_283 = []
     lista_dados_2522 = []
-    for ano in range(2014, ano_atual):
+    for ano in range(2014, ano_atual+1):
         for tri in range(1, 5):
             api = f'https://servicodados.ibge.gov.br/api/v3/agregados/{tabela1086}/periodos/{ano}0{tri}/variaveis/151|282|283|2522?localidades=N3[all]&classificacao=12716[115236]|12529[111737,111738,111739]'     
             variavel_151, variavel_282, variavel_283, variavel_2522 = extrair_dados(api, 1086)
@@ -195,7 +195,7 @@ planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arqui
 worksheet = planilha_principal.active
 ajustar_bordas(planilha_principal)        
 planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\planilhas tratadas\\PTL 1086.xlsx")
-
+print(df1086_estadual.head())
 if __name__ == '__main__':
     from sql import executar_sql 
     executar_sql()
