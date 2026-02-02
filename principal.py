@@ -1,14 +1,10 @@
 import datetime
 import pandas as pd
+import polars as pl
 import requests as rq 
-import pprint
-from localidades import nacional, estadual
 import ssl
-# import gspread
-# from Google import Create_Service
-# from googleapiclient.http import MediaFileUpload
-import openpyxl
-from ajustar_planilha import ajustar_colunas, ajustar_bordas
+import time
+import concurrent.futures
 
 tabela1086 = 1086
 tabela6830 = 6830
@@ -118,7 +114,7 @@ def tratando_dados1086(dados_brutos_282, dados_brutos_283, dados_brutos_171, dad
                     referencia_tempo_str = ', '.join(referencia_tempo)
                     tipo_inspecao_str = ', '.join(tipo_inspecao)
 
-                    dict = {
+                    dict_dados = {
                         'id': id,
                         'nome': nome,
                         'id_produto': id_produto,
@@ -129,30 +125,50 @@ def tratando_dados1086(dados_brutos_282, dados_brutos_283, dados_brutos_171, dad
                         'Trimestre': trimestre
                     }
                     if id_tabela == '282':
-                        dados_limpos_282.append(dict)
+                        dados_limpos_282.append(dict_dados)
                     elif id_tabela == '283':
-                        dados_limpos_283.append(dict)
+                        dados_limpos_283.append(dict_dados)
                     elif id_tabela == '2522':
-                        dados_limpos_2522.append(dict)
+                        dados_limpos_2522.append(dict_dados)
                     elif id_tabela == '151':
-                        dados_limpos_151.append(dict)
+                        dados_limpos_151.append(dict_dados)
 
     return dados_limpos_282, dados_limpos_283, dados_limpos_151, dados_limpos_2522
 
 ano_atual = datetime.datetime.now().year
+
+def processar_ano_periodo(ano, tri):
+    api = f'https://servicodados.ibge.gov.br/api/v3/agregados/{tabela1086}/periodos/{ano}0{tri}/variaveis/151|282|283|2522?localidades=N3[all]&classificacao=12716[115236]|12529[111737,111738,111739]'     
+    try:
+        dados = extrair_dados(api, 1086)
+        if not dados or all(d is None for d in dados):
+            return None
+        
+        variavel_151, variavel_282, variavel_283, variavel_2522 = dados
+        if variavel_151 is None and variavel_282 is None and variavel_283 is None and variavel_2522 is None:
+            return None
+            
+        return tratando_dados1086(variavel_151, variavel_282, variavel_283, variavel_2522)
+    except Exception as e:
+        print(f"Erro processando {ano}/{tri}: {e}")
+        return None
+
 def executando_funcoes():
     lista_dados_151 = [] 
     lista_dados_282 = []
     lista_dados_283 = []
     lista_dados_2522 = []
-    for ano in range(2014, ano_atual+1):
-        for tri in range(1, 5):
-            api = f'https://servicodados.ibge.gov.br/api/v3/agregados/{tabela1086}/periodos/{ano}0{tri}/variaveis/151|282|283|2522?localidades=N3[all]&classificacao=12716[115236]|12529[111737,111738,111739]'     
-            variavel_151, variavel_282, variavel_283, variavel_2522 = extrair_dados(api, 1086)
-            if variavel_151 == None and variavel_282 == None and variavel_283 == None and variavel_2522 == None:
-                break
-            else:
-                novos_dados_151, novos_dados_282, novos_dados_283, novos_dados_2522 = tratando_dados1086(variavel_151, variavel_282, variavel_283, variavel_2522)
+    
+    tarefas = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for ano in range(2014, ano_atual+1):
+            for tri in range(1, 5):
+                tarefas.append(executor.submit(processar_ano_periodo, ano, tri))
+        
+        for future in concurrent.futures.as_completed(tarefas):
+            resultado = future.result()
+            if resultado:
+                novos_dados_151, novos_dados_282, novos_dados_283, novos_dados_2522 = resultado
                 lista_dados_151.extend(novos_dados_151)
                 lista_dados_282.extend(novos_dados_282)
                 lista_dados_283.extend(novos_dados_283)
@@ -161,41 +177,46 @@ def executando_funcoes():
     return  lista_dados_151,lista_dados_282,lista_dados_283, lista_dados_2522
 
 def gerando_dataframe1086(dados_limpos_282_estadual, dados_limpos_283_estadual,  dados_limpos_171_estadual,  dados_limpos_2522_estadual):
-
     
-    df282_estadual = pd.DataFrame(dados_limpos_282_estadual)
-    df283_estadual = pd.DataFrame(dados_limpos_283_estadual)
-    df171_estadual = pd.DataFrame(dados_limpos_171_estadual)
-    df2522_estadual = pd.DataFrame(dados_limpos_2522_estadual)
-    df1086_estadual= pd.merge(df282_estadual, df283_estadual, on=['id', 'nome', 'id_produto','Referencia_Tempo','Tipo_Inspecao', 'ano', 'Trimestre'], how='inner')
-    df1086_estadual= pd.merge(df1086_estadual, df171_estadual, on=['id', 'nome', 'id_produto','Referencia_Tempo','Tipo_Inspecao', 'ano', 'Trimestre'], how='inner')
-    df1086_estadual= pd.merge(df1086_estadual, df2522_estadual, on=['id', 'nome', 'id_produto','Referencia_Tempo','Tipo_Inspecao', 'ano', 'Trimestre'], how='inner')
+    if not dados_limpos_282_estadual:
+        return pd.DataFrame()
+
+    df282_estadual = pl.DataFrame(dados_limpos_282_estadual)
+    df283_estadual = pl.DataFrame(dados_limpos_283_estadual)
+    df171_estadual = pl.DataFrame(dados_limpos_171_estadual)
+    df2522_estadual = pl.DataFrame(dados_limpos_2522_estadual)
+
+    keys = ['id', 'nome', 'id_produto','Referencia_Tempo','Tipo_Inspecao', 'ano', 'Trimestre']
     
+    try:
+        df1086_estadual = df282_estadual.join(df283_estadual, on=keys, how='inner')
+        df1086_estadual = df1086_estadual.join(df171_estadual, on=keys, how='inner')
+        df1086_estadual = df1086_estadual.join(df2522_estadual, on=keys, how='inner')
+    except Exception as e:
+        print(f"Erro no join do Polars: {e}")
+        raise e
 
-    df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'].str.replace(',', '.').astype(float)   
-    df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, adquirido'] * 1000
-    df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'].str.replace(',', '.').astype(float)
-    df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] = df1086_estadual['Quantidade de leite cru, resfriado ou não, industrializado'] * 1000
-    df1086_estadual['ano'] = pd.to_datetime(df1086_estadual['ano'], format='%d/%m/%Y', errors='coerce')
-
+    df1086_estadual = df1086_estadual.with_columns([
+        (pl.col('Quantidade de leite cru, resfriado ou não, adquirido')
+            .str.replace(',', '.')
+            .cast(pl.Float64) * 1000).alias('Quantidade de leite cru, resfriado ou não, adquirido'),
+            
+        (pl.col('Quantidade de leite cru, resfriado ou não, industrializado')
+            .str.replace(',', '.')
+            .cast(pl.Float64) * 1000).alias('Quantidade de leite cru, resfriado ou não, industrializado'),
+            
+        pl.col('ano').str.strptime(pl.Date, format='%d/%m/%Y', strict=False).alias('ano')
+    ])
     
     return df1086_estadual
 
-
-# pp = pprint.PrettyPrinter(indent=4)
+inicio = time.perf_counter()
 dados_limpos_282_estadual, dados_limpos_283_estadual,  dados_limpos_171_estadual,  dados_limpos_2522_estadual = executando_funcoes()
 df1086_estadual = gerando_dataframe1086(dados_limpos_282_estadual, dados_limpos_283_estadual,  dados_limpos_171_estadual,  dados_limpos_2522_estadual)
+fim = time.perf_counter()
+print(f"Tempo de execução: {fim - inicio}")
 
 
-df1086_estadual.to_excel("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\planilhas tratadas\\PLT 1086 ESTADUAL.xlsx", index=False)
-
-
-planilha_principal = openpyxl.Workbook()    
-planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\planilhas tratadas\\PTL 1086.xlsx")    
-worksheet = planilha_principal.active
-ajustar_bordas(planilha_principal)        
-planilha_principal.save("C:\\Users\\LucasFreitas\\Documents\\Lucas Freitas Arquivos\\DATAHUB\\TABELAS\\PTL\\planilhas tratadas\\PTL 1086.xlsx")
-print(df1086_estadual.head())
 if __name__ == '__main__':
     from sql import executar_sql 
     executar_sql()

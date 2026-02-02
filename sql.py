@@ -43,7 +43,7 @@ def executar_sql():
     VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) 
     '''
     try:
-        for idx, i in df1086_estadual.iterrows():
+        for i in df1086_estadual.iter_rows(named=True):
             dados = (
                 i['id'], 
                 i['nome'], 
